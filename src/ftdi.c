@@ -105,7 +105,7 @@ int ftdi_init(struct ftdi_context *ftdi)
     ftdi->error_str = NULL;
     ftdi->module_detach_mode = AUTO_DETACH_SIO_MODULE;
 
-    if (libusb_init(&ftdi->usb_ctx) < 0)
+    if (libusb_init2(&ftdi->usb_ctx, "/dev/bus/usb") < 0)
         ftdi_error_return(-3, "libusb_init() failed");
 
     ftdi_set_interface(ftdi, INTERFACE_ANY);
@@ -520,6 +520,109 @@ static unsigned int _ftdi_determine_max_packet_size(struct ftdi_context *ftdi, l
     \retval -11: libusb_detach_kernel_driver() failed
     \retval -12: libusb_get_configuration() failed
 */
+int ftdi_usb_open_dev2(struct ftdi_context *ftdi, libusb_device *dev, int fileDescriptor)
+{
+    struct libusb_device_descriptor desc;
+    struct libusb_config_descriptor *config0;
+    int cfg, cfg0, detach_errno = 0;
+
+    if (ftdi == NULL)
+        ftdi_error_return(-8, "ftdi context invalid");
+
+    if (libusb_open2(dev, &ftdi->usb_dev, fileDescriptor) < 0)
+        ftdi_error_return(-4, "libusb_open() failed");
+
+    if (libusb_get_device_descriptor(dev, &desc) < 0)
+        ftdi_error_return(-9, "libusb_get_device_descriptor() failed");
+
+    if (libusb_get_config_descriptor(dev, 0, &config0) < 0)
+        ftdi_error_return(-10, "libusb_get_config_descriptor() failed");
+    cfg0 = config0->bConfigurationValue;
+    libusb_free_config_descriptor (config0);
+
+    // Try to detach ftdi_sio kernel module.
+    //
+    // The return code is kept in a separate variable and only parsed
+    // if usb_set_configuration() or usb_claim_interface() fails as the
+    // detach operation might be denied and everything still works fine.
+    // Likely scenario is a static ftdi_sio kernel module.
+    if (ftdi->module_detach_mode == AUTO_DETACH_SIO_MODULE)
+    {
+        if (libusb_detach_kernel_driver(ftdi->usb_dev, ftdi->interface) !=0)
+            detach_errno = errno;
+    }
+
+    if (libusb_get_configuration (ftdi->usb_dev, &cfg) < 0)
+        ftdi_error_return(-12, "libusb_get_configuration () failed");
+    // set configuration (needed especially for windows)
+    // tolerate EBUSY: one device with one configuration, but two interfaces
+    //    and libftdi sessions to both interfaces (e.g. FT2232)
+    if (desc.bNumConfigurations > 0 && cfg != cfg0)
+    {
+        if (libusb_set_configuration(ftdi->usb_dev, cfg0) < 0)
+        {
+            ftdi_usb_close_internal (ftdi);
+            if (detach_errno == EPERM)
+            {
+                ftdi_error_return(-8, "inappropriate permissions on device!");
+            }
+            else
+            {
+                ftdi_error_return(-3, "unable to set usb configuration. Make sure the default FTDI driver is not in use");
+            }
+        }
+    }
+
+    if (libusb_claim_interface(ftdi->usb_dev, ftdi->interface) < 0)
+    {
+        ftdi_usb_close_internal (ftdi);
+        if (detach_errno == EPERM)
+        {
+            ftdi_error_return(-8, "inappropriate permissions on device!");
+        }
+        else
+        {
+            ftdi_error_return(-5, "unable to claim usb device. Make sure the default FTDI driver is not in use");
+        }
+    }
+
+    if (ftdi_usb_reset (ftdi) != 0)
+    {
+        ftdi_usb_close_internal (ftdi);
+        ftdi_error_return(-6, "ftdi_usb_reset failed");
+    }
+
+    // Try to guess chip type
+    // Bug in the BM type chips: bcdDevice is 0x200 for serial == 0
+    if (desc.bcdDevice == 0x400 || (desc.bcdDevice == 0x200
+                                    && desc.iSerialNumber == 0))
+        ftdi->type = TYPE_BM;
+    else if (desc.bcdDevice == 0x200)
+        ftdi->type = TYPE_AM;
+    else if (desc.bcdDevice == 0x500)
+        ftdi->type = TYPE_2232C;
+    else if (desc.bcdDevice == 0x600)
+        ftdi->type = TYPE_R;
+    else if (desc.bcdDevice == 0x700)
+        ftdi->type = TYPE_2232H;
+    else if (desc.bcdDevice == 0x800)
+        ftdi->type = TYPE_4232H;
+    else if (desc.bcdDevice == 0x900)
+        ftdi->type = TYPE_232H;
+    else if (desc.bcdDevice == 0x1000)
+        ftdi->type = TYPE_230X;
+
+    // Determine maximum packet size
+    ftdi->max_packet_size = _ftdi_determine_max_packet_size(ftdi, dev);
+
+    if (ftdi_set_baudrate (ftdi, 9600) != 0)
+    {
+        ftdi_usb_close_internal (ftdi);
+        ftdi_error_return(-7, "set baudrate failed");
+    }
+
+    ftdi_error_return(0, "all fine");
+}
 int ftdi_usb_open_dev(struct ftdi_context *ftdi, libusb_device *dev)
 {
     struct libusb_device_descriptor desc;
