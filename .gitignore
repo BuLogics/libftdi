@@ -51,3 +51,18 @@ CMakeFiles
 # Misc. binaries
 *.dylib
 opt
+
+CPackConfig.cmake
+CPackSourceConfig.cmake
+LibFTDI1Config.cmake
+LibFTDI1ConfigbFTDI1ConfigVersion.cmake
+Makefile
+examples/Makefile
+ftdi_eeprom/examplesMakefile
+ftdipp/Makefile
+packages/Makefile
+python/Makefile
+src/packagesMakefile
+src/ftdi_version_i.h
+test/Makefile
+LibFTDI1ConfigVersion.cmake

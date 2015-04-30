@@ -37,6 +37,9 @@
 #include "ftdi_i.h"
 #include "ftdi.h"
 #include "ftdi_version_i.h"
+#include "/usr/local/Cellar/android-ndk/r10d/platforms/android-19/arch-x86/usr/include/android/log.h"
+
+#define LOGE(TAG,...) __android_log_print(ANDROID_LOG_ERROR  , TAG,__VA_ARGS__)
 
 #define ftdi_error_return(code, str) do {  \
         if ( ftdi )                        \
@@ -209,11 +212,14 @@ int ftdi_set_interface(struct ftdi_context *ftdi, enum ftdi_interface interface)
 */
 void ftdi_deinit(struct ftdi_context *ftdi)
 {
+    LOGE("TwoProngPlugin - LibFTDI", "1: Starting FTDI DeInit");
     if (ftdi == NULL)
         return;
 
+    LOGE("TwoProngPlugin - LibFTDI", "1: Calling Internal Close Function");
     ftdi_usb_close_internal (ftdi);
 
+    LOGE("TwoProngPlugin - LibFTDI", "3: Freeing memory locations");
     if (ftdi->readbuffer != NULL)
     {
         free(ftdi->readbuffer);
@@ -243,6 +249,7 @@ void ftdi_deinit(struct ftdi_context *ftdi)
 
     if (ftdi->usb_ctx)
     {
+        //LOGE("TwoProngPlugin - LibFTDI", "4: Exiting LibUSB context");
         libusb_exit(ftdi->usb_ctx);
         ftdi->usb_ctx = NULL;
     }
