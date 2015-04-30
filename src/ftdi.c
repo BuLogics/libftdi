@@ -37,7 +37,7 @@
 #include "ftdi_i.h"
 #include "ftdi.h"
 #include "ftdi_version_i.h"
-#include "/usr/local/Cellar/android-ndk/r10d/platforms/android-19/arch-x86/usr/include/android/log.h"
+#include <android/log.h>
 
 #define LOGE(TAG,...) __android_log_print(ANDROID_LOG_ERROR  , TAG,__VA_ARGS__)
 
