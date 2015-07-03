@@ -39,6 +39,8 @@
 #include "ftdi_version_i.h"
 #include <android/log.h>
 
+#define LOGD(TAG,...) __android_log_print(ANDROID_LOG_DEBUG  , TAG,__VA_ARGS__)
+#define LOGI(TAG,...) __android_log_print(ANDROID_LOG_INFO  , TAG,__VA_ARGS__)
 #define LOGE(TAG,...) __android_log_print(ANDROID_LOG_ERROR  , TAG,__VA_ARGS__)
 
 #define ftdi_error_return(code, str) do {  \
@@ -67,6 +69,7 @@
 */
 static void ftdi_usb_close_internal (struct ftdi_context *ftdi)
 {
+    LOGD("TwoProngPlugin - FTDI", "ftdi_usb_close_internal");
     if (ftdi && ftdi->usb_dev)
     {
         libusb_close (ftdi->usb_dev);
@@ -249,7 +252,7 @@ void ftdi_deinit(struct ftdi_context *ftdi)
 
     if (ftdi->usb_ctx)
     {
-        //LOGE("TwoProngPlugin - LibFTDI", "4: Exiting LibUSB context");
+        LOGE("TwoProngPlugin - LibFTDI", "4: Exiting LibUSB context");
         libusb_exit(ftdi->usb_ctx);
         ftdi->usb_ctx = NULL;
     }
@@ -529,6 +532,8 @@ static unsigned int _ftdi_determine_max_packet_size(struct ftdi_context *ftdi, l
 */
 int ftdi_usb_open_dev2(struct ftdi_context *ftdi, libusb_device *dev, int fileDescriptor)
 {
+    LOGD("TwoProngPlugin - FTDI", "ftdi_usb_open_dev2 fd=%d", fileDescriptor);
+
     struct libusb_device_descriptor desc;
     struct libusb_config_descriptor *config0;
     int cfg, cfg0, detach_errno = 0;
@@ -625,7 +630,7 @@ int ftdi_usb_open_dev2(struct ftdi_context *ftdi, libusb_device *dev, int fileDe
     if (ftdi_set_baudrate (ftdi, 9600) != 0)
     {
         ftdi_usb_close_internal (ftdi);
-        ftdi_error_return(-7, "set baudrate failed");
+        ftdi_error_return(-7, "set baudrate failed 3");
     }
 
     ftdi_error_return(0, "all fine");
@@ -992,6 +997,8 @@ int ftdi_usb_open_string(struct ftdi_context *ftdi, const char* description)
 */
 int ftdi_usb_reset(struct ftdi_context *ftdi)
 {
+    LOGD("TwoProngPlugin - FTDI", "ftdi_usb_reset");
+
     if (ftdi == NULL || ftdi->usb_dev == NULL)
         ftdi_error_return(-2, "USB device unavailable");
 
@@ -1067,6 +1074,7 @@ int ftdi_usb_purge_tx_buffer(struct ftdi_context *ftdi)
 */
 int ftdi_usb_purge_buffers(struct ftdi_context *ftdi)
 {
+    LOGD("TwoProngPlugin - FTDI", "ftdi_usb_purge_buffers");
     int result;
 
     if (ftdi == NULL || ftdi->usb_dev == NULL)
@@ -1096,6 +1104,8 @@ int ftdi_usb_purge_buffers(struct ftdi_context *ftdi)
 */
 int ftdi_usb_close(struct ftdi_context *ftdi)
 {
+    LOGD("TwoProngPlugin - FTDI", "ftdi_usb_close");
+
     int rtn = 0;
 
     if (ftdi == NULL)
@@ -1347,6 +1357,7 @@ int convert_baudrate_UT_export(int baudrate, struct ftdi_context *ftdi,
 */
 int ftdi_set_baudrate(struct ftdi_context *ftdi, int baudrate)
 {
+    LOGD("TwoProngPlugin - FTDI", "ftdi_set_baudrate  %d", baudrate);
     unsigned short value, index;
     int actual_baudrate;
 
