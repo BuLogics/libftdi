@@ -39,15 +39,19 @@
 #include "ftdi_version_i.h"
 #include <android/log.h>
 
-#define LOGD(TAG,...) __android_log_print(ANDROID_LOG_DEBUG  , TAG,__VA_ARGS__)
-#define LOGI(TAG,...) __android_log_print(ANDROID_LOG_INFO  , TAG,__VA_ARGS__)
-#define LOGE(TAG,...) __android_log_print(ANDROID_LOG_ERROR  , TAG,__VA_ARGS__)
+#define TAG "LibFTDI"
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
 #define ftdi_error_return(code, str) do {  \
-        if ( ftdi )                        \
+        if ( ftdi ) {                       \
             ftdi->error_str = str;         \
-        else                               \
+            LOGE("ftdi_error: %s", str); \
+        } \
+        else {                          \
             fprintf(stderr, str);          \
+            LOGE("ftdi_error: %s", str); \
+        } \
         return code;                       \
    } while(0);
 
@@ -69,7 +73,6 @@
 */
 static void ftdi_usb_close_internal (struct ftdi_context *ftdi)
 {
-    LOGD("TwoProngPlugin - FTDI", "ftdi_usb_close_internal");
     if (ftdi && ftdi->usb_dev)
     {
         libusb_close (ftdi->usb_dev);
@@ -215,14 +218,14 @@ int ftdi_set_interface(struct ftdi_context *ftdi, enum ftdi_interface interface)
 */
 void ftdi_deinit(struct ftdi_context *ftdi)
 {
-    LOGE("TwoProngPlugin - LibFTDI", "1: Starting FTDI DeInit");
+    LOGE("1: Starting FTDI DeInit");
     if (ftdi == NULL)
         return;
 
-    LOGE("TwoProngPlugin - LibFTDI", "1: Calling Internal Close Function");
+    LOGE("2: Calling Internal Close Function");
     ftdi_usb_close_internal (ftdi);
 
-    LOGE("TwoProngPlugin - LibFTDI", "3: Freeing memory locations");
+    LOGE("3: Freeing memory locations");
     if (ftdi->readbuffer != NULL)
     {
         free(ftdi->readbuffer);
@@ -252,7 +255,7 @@ void ftdi_deinit(struct ftdi_context *ftdi)
 
     if (ftdi->usb_ctx)
     {
-        LOGE("TwoProngPlugin - LibFTDI", "4: Exiting LibUSB context");
+        LOGE("4: Exiting LibUSB context");
         libusb_exit(ftdi->usb_ctx);
         ftdi->usb_ctx = NULL;
     }
@@ -532,7 +535,7 @@ static unsigned int _ftdi_determine_max_packet_size(struct ftdi_context *ftdi, l
 */
 int ftdi_usb_open_dev2(struct ftdi_context *ftdi, libusb_device *dev, int fileDescriptor)
 {
-    LOGD("TwoProngPlugin - FTDI", "ftdi_usb_open_dev2 fd=%d", fileDescriptor);
+    LOGD("ftdi_usb_open_dev2 fd=%d", fileDescriptor);
 
     struct libusb_device_descriptor desc;
     struct libusb_config_descriptor *config0;
@@ -997,7 +1000,7 @@ int ftdi_usb_open_string(struct ftdi_context *ftdi, const char* description)
 */
 int ftdi_usb_reset(struct ftdi_context *ftdi)
 {
-    LOGD("TwoProngPlugin - FTDI", "ftdi_usb_reset");
+    LOGD("ftdi_usb_reset");
 
     if (ftdi == NULL || ftdi->usb_dev == NULL)
         ftdi_error_return(-2, "USB device unavailable");
@@ -1074,7 +1077,7 @@ int ftdi_usb_purge_tx_buffer(struct ftdi_context *ftdi)
 */
 int ftdi_usb_purge_buffers(struct ftdi_context *ftdi)
 {
-    LOGD("TwoProngPlugin - FTDI", "ftdi_usb_purge_buffers");
+    LOGD("ftdi_usb_purge_buffers");
     int result;
 
     if (ftdi == NULL || ftdi->usb_dev == NULL)
@@ -1104,7 +1107,7 @@ int ftdi_usb_purge_buffers(struct ftdi_context *ftdi)
 */
 int ftdi_usb_close(struct ftdi_context *ftdi)
 {
-    LOGD("TwoProngPlugin - FTDI", "ftdi_usb_close");
+    LOGD("ftdi_usb_close");
 
     int rtn = 0;
 
@@ -1357,7 +1360,7 @@ int convert_baudrate_UT_export(int baudrate, struct ftdi_context *ftdi,
 */
 int ftdi_set_baudrate(struct ftdi_context *ftdi, int baudrate)
 {
-    LOGD("TwoProngPlugin - FTDI", "ftdi_set_baudrate  %d", baudrate);
+    LOGD("ftdi_set_baudrate  %d", baudrate);
     unsigned short value, index;
     int actual_baudrate;
 
