@@ -1028,6 +1028,7 @@ int ftdi_usb_reset(struct ftdi_context *ftdi)
 */
 int ftdi_usb_purge_rx_buffer(struct ftdi_context *ftdi)
 {
+    LOGD("ftdi_usb_purge_rx_buffer");
     if (ftdi == NULL || ftdi->usb_dev == NULL)
         ftdi_error_return(-2, "USB device unavailable");
 
@@ -1054,6 +1055,7 @@ int ftdi_usb_purge_rx_buffer(struct ftdi_context *ftdi)
 */
 int ftdi_usb_purge_tx_buffer(struct ftdi_context *ftdi)
 {
+    LOGD("ftdi_usb_purge_tx_buffer");
     if (ftdi == NULL || ftdi->usb_dev == NULL)
         ftdi_error_return(-2, "USB device unavailable");
 
@@ -1528,6 +1530,8 @@ static void LIBUSB_CALL ftdi_read_data_cb(struct libusb_transfer *transfer)
 
     actual_length = transfer->actual_length;
 
+    LOGD("ftdi_read_data_cb: length = %d", actual_length);
+
     if (actual_length > 2)
     {
         // skip FTDI status bytes.
@@ -1592,6 +1596,12 @@ static void LIBUSB_CALL ftdi_read_data_cb(struct libusb_transfer *transfer)
                 tc->completed = 1;
                 return;
             }
+        }
+    } else {
+        if (actual_length > 0) {
+            uint8_t byt1 = ftdi->readbuffer[ftdi->readbuffer_offset];
+            uint8_t byt2 = ftdi->readbuffer[ftdi->readbuffer_offset + 1];
+            LOGD("ftdi_read_data_cb: byte1 = 0x%x, byte2 = 0x%x", byt1, byt2);
         }
     }
     ret = libusb_submit_transfer (transfer);
@@ -1893,7 +1903,7 @@ int ftdi_read_data(struct ftdi_context *ftdi, unsigned char *buf, int size)
         ftdi->readbuffer_remaining -= size;
         ftdi->readbuffer_offset += size;
 
-        /* printf("Returning bytes from buffer: %d - remaining: %d\n", size, ftdi->readbuffer_remaining); */
+        LOGD("Returning bytes from buffer: %d - remaining: %d\n", size, ftdi->readbuffer_remaining);
 
         return size;
     }
@@ -1915,13 +1925,15 @@ int ftdi_read_data(struct ftdi_context *ftdi, unsigned char *buf, int size)
         if (ret < 0)
             ftdi_error_return(ret, "usb bulk read failed");
 
+        // LOGD("ftdi_read_data read from USB actual_length = %d", actual_length);
+
         if (actual_length > 2)
         {
             // skip FTDI status bytes.
             // Maybe stored in the future to enable modem use
             num_of_chunks = actual_length / packet_size;
             chunk_remains = actual_length % packet_size;
-            //printf("actual_length = %X, num_of_chunks = %X, chunk_remains = %X, readbuffer_offset = %X\n", actual_length, num_of_chunks, chunk_remains, ftdi->readbuffer_offset);
+            LOGD("actual_length = %X, num_of_chunks = %X, chunk_remains = %X, readbuffer_offset = %X\n", actual_length, num_of_chunks, chunk_remains, ftdi->readbuffer_offset);
 
             ftdi->readbuffer_offset += 2;
             actual_length -= 2;
@@ -1954,13 +1966,12 @@ int ftdi_read_data(struct ftdi_context *ftdi, unsigned char *buf, int size)
             if (offset+actual_length <= size)
             {
                 memcpy (buf+offset, ftdi->readbuffer+ftdi->readbuffer_offset, actual_length);
-                //printf("buf[0] = %X, buf[1] = %X\n", buf[0], buf[1]);
+                // LOGD("buf[0] = %X, buf[1] = %X\n", buf[0], buf[1]);
                 offset += actual_length;
 
                 /* Did we read exactly the right amount of bytes? */
                 if (offset == size)
-                    //printf("read_data exact rem %d offset %d\n",
-                    //ftdi->readbuffer_remaining, offset);
+                    LOGD("read_data exact rem %d offset %d\n", ftdi->readbuffer_remaining, offset);
                     return offset;
             }
             else
@@ -1973,8 +1984,8 @@ int ftdi_read_data(struct ftdi_context *ftdi, unsigned char *buf, int size)
                 ftdi->readbuffer_remaining = actual_length-part_size;
                 offset += part_size;
 
-                /* printf("Returning part: %d - size: %d - offset: %d - actual_length: %d - remaining: %d\n",
-                part_size, size, offset, actual_length, ftdi->readbuffer_remaining); */
+                LOGD("Returning part: %d - size: %d - offset: %d - actual_length: %d - remaining: %d\n",
+                        part_size, size, offset, actual_length, ftdi->readbuffer_remaining);
 
                 return offset;
             }
