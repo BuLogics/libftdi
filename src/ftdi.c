@@ -114,7 +114,7 @@ int ftdi_init(struct ftdi_context *ftdi)
     ftdi->error_str = NULL;
     ftdi->module_detach_mode = AUTO_DETACH_SIO_MODULE;
 
-    if (libusb_init2(&ftdi->usb_ctx, "/dev/bus/usb") < 0)
+    if (libusb_init(&ftdi->usb_ctx) < 0)
         ftdi_error_return(-3, "libusb_init() failed");
 
     ftdi_set_interface(ftdi, INTERFACE_ANY);
@@ -544,9 +544,11 @@ int ftdi_usb_open_dev2(struct ftdi_context *ftdi, libusb_device *dev, int fileDe
     if (ftdi == NULL)
         ftdi_error_return(-8, "ftdi context invalid");
 
-    if (libusb_open2(dev, &ftdi->usb_dev, fileDescriptor) < 0)
+    LOGD("Opening in LibFTDI");
+    if (libusb_wrap_fd(NULL, fileDescriptor, &ftdi->usb_dev) < 0)
         ftdi_error_return(-4, "libusb_open() failed");
 
+    dev = libusb_get_device(ftdi->usb_dev);
     if (libusb_get_device_descriptor(dev, &desc) < 0)
         ftdi_error_return(-9, "libusb_get_device_descriptor() failed");
 
@@ -567,6 +569,7 @@ int ftdi_usb_open_dev2(struct ftdi_context *ftdi, libusb_device *dev, int fileDe
             detach_errno = errno;
     }
 
+    LOGD("Getting Configuration, ftdi->usb_dev: %u, &cfg: &u", ftdi->usb_dev, &cfg);
     if (libusb_get_configuration (ftdi->usb_dev, &cfg) < 0)
         ftdi_error_return(-12, "libusb_get_configuration () failed");
     // set configuration (needed especially for windows)
