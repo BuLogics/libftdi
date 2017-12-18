@@ -477,6 +477,8 @@ static unsigned int _ftdi_determine_max_packet_size(struct ftdi_context *ftdi, l
     struct libusb_config_descriptor *config0;
     unsigned int packet_size;
 
+    // LOGD("_ftdi_determine_max_packet_size");
+
     // Sanity check
     if (ftdi == NULL || dev == NULL)
         return 64;
@@ -489,27 +491,40 @@ static unsigned int _ftdi_determine_max_packet_size(struct ftdi_context *ftdi, l
     else
         packet_size = 64;
 
+    // LOGD("packet_size = %u", packet_size);
+
     if (libusb_get_device_descriptor(dev, &desc) < 0)
         return packet_size;
 
     if (libusb_get_config_descriptor(dev, 0, &config0) < 0)
         return packet_size;
 
+    // LOGD("ftdi = 0x%x, config0 = 0x%x", ftdi, config0);
+
     if (desc.bNumConfigurations > 0)
     {
+        // LOGD("desc.bNumConfigurations = %u", desc.bNumConfigurations);
         if (ftdi->interface < config0->bNumInterfaces)
         {
+            // LOGD("ftdi interface = %u", ftdi->interface);
             struct libusb_interface interface = config0->interface[ftdi->interface];
+            // LOGD("interface.num_altsetting = %u", interface.num_altsetting);
+
             if (interface.num_altsetting > 0)
             {
                 struct libusb_interface_descriptor descriptor = interface.altsetting[0];
+                // LOGD("descriptor.bNumEndpoints = %u", descriptor.bNumEndpoints);
                 if (descriptor.bNumEndpoints > 0)
                 {
-                    packet_size = descriptor.endpoint[0].wMaxPacketSize;
+                    // LOGD("descriptor.endpoint[0] = 0x%x", descriptor.endpoint);
+                    if (descriptor.endpoint)
+                        packet_size = descriptor.endpoint[0].wMaxPacketSize;
                 }
             }
         }
     }
+
+    // LOGD("_ftdi_determine_max_packet_size done. packet_size = %u", packet_size);
 
     libusb_free_config_descriptor (config0);
     return packet_size;
@@ -544,7 +559,7 @@ int ftdi_usb_open_dev2(struct ftdi_context *ftdi, libusb_device *dev, int fileDe
     if (ftdi == NULL)
         ftdi_error_return(-8, "ftdi context invalid");
 
-    LOGD("Opening in LibFTDI");
+    // LOGD("Opening in LibFTDI");
     if (libusb_wrap_fd(NULL, fileDescriptor, &ftdi->usb_dev) < 0)
         ftdi_error_return(-4, "libusb_open() failed");
 
@@ -569,7 +584,7 @@ int ftdi_usb_open_dev2(struct ftdi_context *ftdi, libusb_device *dev, int fileDe
             detach_errno = errno;
     }
 
-    LOGD("Getting Configuration, ftdi->usb_dev: %u, &cfg: &u", ftdi->usb_dev, &cfg);
+    LOGD("Getting Configuration, ftdi->usb_dev: %u, &cfg: %u", ftdi->usb_dev, &cfg);
     if (libusb_get_configuration (ftdi->usb_dev, &cfg) < 0)
         ftdi_error_return(-12, "libusb_get_configuration () failed");
     // set configuration (needed especially for windows)
@@ -610,6 +625,8 @@ int ftdi_usb_open_dev2(struct ftdi_context *ftdi, libusb_device *dev, int fileDe
         ftdi_error_return(-6, "ftdi_usb_reset failed");
     }
 
+    // LOGD("ftdi_usb_reset done");
+
     // Try to guess chip type
     // Bug in the BM type chips: bcdDevice is 0x200 for serial == 0
     if (desc.bcdDevice == 0x400 || (desc.bcdDevice == 0x200
@@ -633,11 +650,15 @@ int ftdi_usb_open_dev2(struct ftdi_context *ftdi, libusb_device *dev, int fileDe
     // Determine maximum packet size
     ftdi->max_packet_size = _ftdi_determine_max_packet_size(ftdi, dev);
 
+    // LOGD("Setting baud rate: ftdi->type = %u", ftdi->type);
+
     if (ftdi_set_baudrate (ftdi, 9600) != 0)
     {
         ftdi_usb_close_internal (ftdi);
         ftdi_error_return(-7, "set baudrate failed 3");
     }
+
+    // LOGD("ftdi returning all fine");
 
     ftdi_error_return(0, "all fine");
 }
@@ -1008,10 +1029,14 @@ int ftdi_usb_reset(struct ftdi_context *ftdi)
     if (ftdi == NULL || ftdi->usb_dev == NULL)
         ftdi_error_return(-2, "USB device unavailable");
 
+    // LOGD("libusb_control_transfer");
+
     if (libusb_control_transfer(ftdi->usb_dev, FTDI_DEVICE_OUT_REQTYPE,
                                 SIO_RESET_REQUEST, SIO_RESET_SIO,
                                 ftdi->index, NULL, 0, ftdi->usb_write_timeout) < 0)
         ftdi_error_return(-1,"FTDI reset failed");
+
+    // LOGD("libusb_control_transfer done");
 
     // Invalidate data in the readbuffer
     ftdi->readbuffer_offset = 0;
